@@ -1,0 +1,1 @@
+print("Personal Dictionary v0.1")
