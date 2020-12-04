@@ -1,8 +1,7 @@
 # Personal-Dictionary
-This is your personal dictionary which you can use to store bits and pieces like some links, some useful info form a meeting, some important text you found on a website or whatever you think is important for you!
+This is your personal dictionary which you can use to store bits and pieces like some links, some useful info from a meeting, some important text you found on a website, or whatever you think is important for you!
 
-
-This dictionary is powered by database hence this dictionary will come with all the goodness of it. Since this is bare minimum infrastructure hence it have very basic functionality like add and fetch word. The GUI is also very very basic. As this project progresses and more people gets involved we can turn this into a very useful little software :-)
+This dictionary is powered by a database hence this dictionary will come with all the goodness of it. Since this is a bare minimum infrastructure hence it has very basic functionality like add and fetch word. The GUI is also very very basic. As this project progresses and more people get involved we can turn this into a very useful little software :-)
 
 
 
