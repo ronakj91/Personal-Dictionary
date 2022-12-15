@@ -30,9 +30,14 @@ class Database:
             self.conn.rollback()
 
     def fetch(self, word=''):
-        self.cur.execute("SELECT * FROM dictionary WHERE Word LIKE ?", ('%' + word + '%',))
-        records  = self.cur.fetchall()
-        return records 
+        try:
+            # Search into Table
+            self.cur.execute("SELECT * FROM dictionary WHERE Word LIKE ?", ('%' + word + '%',))
+            records  = self.cur.fetchall()
+            return records 
+
+        except sqlite3.Error as error:
+            print("Failed to search records from table", error)
 
     def insert(self, word, meaning):
         # Insert into Table
@@ -66,16 +71,6 @@ class Database:
         finally:
             #return the last changes made to the database
             self.conn.rollback()
-
-    def search(self,word):
-        try:
-            # Search into Table
-            self.cur.execute("SELECT * FROM dictionary WHERE Word like ?",(word,))
-            records  = self.cur.fetchall()
-            return records 
-
-        except sqlite3.Error as error:
-            print("Failed to search records from table", error)
 
     def __del__(self):
         # Close Connection
@@ -325,7 +320,7 @@ class ConfigureGUI:
         # Clear the Treeview
         self.word_database.delete(*self.word_database.get_children())
 
-        for record  in self.dbms_inst.search(self.ws_ent.get()):
+        for record  in self.dbms_inst.fetch(self.ws_ent.get()):
             # Add Data in the TreeView
             if count % 2 == 0:
                 self.word_database.insert(parent='', index='end',iid=count, text="", 
