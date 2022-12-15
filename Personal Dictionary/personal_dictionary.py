@@ -3,13 +3,10 @@ try:  # for Python2
     from tkinter import *
     from tkinter import ttk,messagebox,Scrollbar
     from tkinter.ttk import Treeview
-    import textwrap
 except ImportError:  # for Python3
     from tkinter import *
-    from tkinter import ttk  # ttk = themed tkinter
-    from tkinter import messagebox,Scrollbar
+    from tkinter import ttk ,messagebox,Scrollbar
     from tkinter.ttk import Treeview
-    import textwrap
 import sqlite3
 import traceback
 
@@ -93,7 +90,8 @@ class ConfigureGUI:
         # Configure the root object for the Application
         self.root = root
         self.root.title(88 * " " + "GUI DICTIONARY")
-        self.root.geometry("717x700+300+50")
+        #self.root.geometry("717x700+300+50")
+        self.root.geometry("")
         self.root.resizable(width=False, height=False)
         self.root.config(bg='#2A2C2B')
 
@@ -127,16 +125,17 @@ class ConfigureGUI:
         label_frame.grid(row=2, column=0, padx=2, pady=2, sticky="nsew")
 
         # ======================LABEL WIDGET===================================    
-        self.ws_lbl = Label(label_frame, text = "Name", font=('calibri', 12, 'normal'))
+        self.ws_lbl = Label(label_frame, text = "Search Keyword", font=('Arial', 12, 'bold'), 
+                            fg="black",padx=1, pady=1, borderwidth=0)
         self.ws_lbl.grid(row=0, column=0, sticky=W)
   
         self.lblWordToAdd = Label(title_frame, font=('Arial', 12, 'bold'),
-                                  text="Enter your word ", fg="black",
+                                  text="Enter Keyword ", fg="black",
                                   padx=1, pady=1, borderwidth=0)
         self.lblWordToAdd.grid(row=0, column=0, sticky=W)
 
         self.lblDescription = Label(title_frame, font=('Arial', 12, 'bold'),
-                                    text="Enter description ", wraplength=500,
+                                    text="Enter Description ", wraplength=500,
                                     padx=1, pady=1, borderwidth=0, fg="black")
         self.lblDescription.grid(row=1, column=0, sticky=W)
 
@@ -206,7 +205,8 @@ class ConfigureGUI:
         self.word_database.tag_configure('evenrow', background="lightblue")
 
         self.word_database.bind("<Double-1>", self.displaySelectedItemOnDoubleClick)
-        
+        self.ws_ent.bind("<Return>",self.searchData)
+
         # Calling pack method w.r.to treeview
         self.word_database.pack(side="left", fill=BOTH, expand=TRUE)
 
@@ -234,17 +234,11 @@ class ConfigureGUI:
                                     bd=4, command=self.clearData)
         clear_record_button.grid(row=0, column=3, padx=2, pady=2, sticky="nsew")
 
-        # Search Button
-        search_button = Button(label_frame, text="Search in Table",
-                               font=('Helvetica', 10, 'bold'), height=2,
-                               width=13, bd=4, command=self.searchData)
-        search_button.grid(row=0, column=2, padx=2, pady=2, sticky="nsew")
-
         # Reset Button
         reset_button = Button(label_frame, text="Reset View",
                                font=('Helvetica', 10, 'bold'), height=2,
                                width=13, bd=4, command=self.resetView)
-        reset_button.grid(row=0, column=3, padx=2, pady=2, sticky="nsew")
+        reset_button.grid(row=0, column=2, padx=2, pady=2, sticky="nsew")
 
     # ======================FUNCTION DECLARATION===============================
     def populateView(self, word=''):
@@ -323,29 +317,24 @@ class ConfigureGUI:
         self.ws_ent.delete(0, END)
         self.populateView()
 
-    def searchData(self):
+    def searchData(self,event):
         # Add our data to the screen
         global count
         count = 0
 
-        lookup_record = self.ws_ent.get()
+        # Clear the Treeview
+        self.word_database.delete(*self.word_database.get_children())
 
-        if (len(lookup_record ) == 0) or (not lookup_record .isalpha()):
-            messagebox.showerror("Error", "Enter correct data !!")
-        else:
-            # Clear the Treeview
-            self.word_database.delete(*self.word_database.get_children())
-
-            for record  in self.dbms_inst.search(lookup_record):
-                # Add Data in the TreeView
-                if count % 2 == 0:
-                    self.word_database.insert(parent='', index='end',iid=count, text="", 
-                                            values=(record[0], record[1],record[2]),tags=('evenrow',))
-                else:
-                    self.word_database.insert(parent='', index='end',iid=count, text="",
-                                            values=(record[0], record[1],record[2]),tags=('oddrow',))
-                # increment counter
-                count += 1
+        for record  in self.dbms_inst.search(self.ws_ent.get()):
+            # Add Data in the TreeView
+            if count % 2 == 0:
+                self.word_database.insert(parent='', index='end',iid=count, text="", 
+                                        values=(record[0], record[1],record[2]),tags=('evenrow',))
+            else:
+                self.word_database.insert(parent='', index='end',iid=count, text="",
+                                        values=(record[0], record[1],record[2]),tags=('oddrow',))
+            # increment counter
+            count += 1
 
     # create a function to display the selected row from treeview on double click
     def displaySelectedItemOnDoubleClick(self,event):
@@ -389,6 +378,14 @@ class ConfigureGUI:
 
 if __name__ == '__main__':
     window = Tk()
+    # Creating object of photoimage class
+    # Image should be in the same folder
+    # in which script is saved
+    p1 = PhotoImage(file = 'icon.png')
+
+    # Setting icon of master window
+    window.iconphoto(False, p1)
+    
     window.wm_attributes('-fullscreen', 'false')
     application = ConfigureGUI(window)
     application.populateView()
