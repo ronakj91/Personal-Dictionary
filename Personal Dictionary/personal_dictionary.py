@@ -3,11 +3,13 @@ try:  # for Python2
     from tkinter import *
     from tkinter import ttk,messagebox,Scrollbar
     from tkinter.ttk import Treeview
+    import textwrap
 except ImportError:  # for Python3
     from tkinter import *
     from tkinter import ttk  # ttk = themed tkinter
     from tkinter import messagebox,Scrollbar
     from tkinter.ttk import Treeview
+    import textwrap
 import sqlite3
 import traceback
 
@@ -26,6 +28,9 @@ class Database:
 
         except sqlite3.Error as error:
             print("Failed to create table", error)
+        finally:
+            #return the last changes made to the database
+            self.conn.rollback()
 
     def fetch(self, word=''):
         self.cur.execute("SELECT * FROM dictionary WHERE Word LIKE ?", ('%' + word + '%',))
@@ -33,24 +38,20 @@ class Database:
         return records 
 
     def insert(self, word, meaning):
-        #print the id of the inserted row
-        print(self.cur.lastrowid)
-
         # Insert into Table
-        self.cur.execute("INSERT INTO dictionary VALUES (?, ?, ?)", (self.cur.lastrowid,word, meaning))
-        self.conn.commit()
-
-    def remove(self, id):
-        self.cur.execute("DELETE FROM dictionary WHERE id=?", str(id))
+        self.cur.execute("INSERT INTO dictionary VALUES (NULL, ?, ?)", (word, meaning))
         self.conn.commit()
 
     def remove_many(self, id_list):
         try:
-            self.cur.executemany("""DELETE FROM dictionary WHERE id=?""", id_list)
+            self.cur.executemany("""DELETE FROM dictionary WHERE id=?""", [(a,) for a in id_list])
             print("Total", self.cur.rowcount, "Records deleted successfully")
             self.conn.commit()
+            id_list=[]
         except sqlite3.Error as error:
             print("Failed to delete multiple records from table", error)
+        finally:
+            self.conn.rollback()
 
     def update(self, id_number, word, meaning):
         try:
@@ -65,10 +66,24 @@ class Database:
             print(self.cur.fetchall())
         except sqlite3.Error as error:
             print("Failed to update records from dictionary", error)
+        finally:
+            #return the last changes made to the database
+            self.conn.rollback()
+
+    def search(self,word):
+        try:
+            # Search into Table
+            self.cur.execute("SELECT * FROM dictionary WHERE Word like ?",(word,))
+            records  = self.cur.fetchall()
+            return records 
+
+        except sqlite3.Error as error:
+            print("Failed to search records from table", error)
 
     def __del__(self):
         # Close Connection
-        self.conn.close()
+        if self.conn is not None:
+            self.conn.close()
 
 class ConfigureGUI:
     """[summary]
@@ -78,7 +93,7 @@ class ConfigureGUI:
         # Configure the root object for the Application
         self.root = root
         self.root.title(88 * " " + "GUI DICTIONARY")
-        self.root.geometry("690x610+300+50")
+        self.root.geometry("717x700+300+50")
         self.root.resizable(width=False, height=False)
         self.root.config(bg='#2A2C2B')
 
@@ -88,6 +103,7 @@ class ConfigureGUI:
         # ================================VARIABLES============================
         self.word_to_add = StringVar()
         self.word_description = StringVar()
+        self.name_to_search = StringVar()
 
         # ================================FRAMES===============================
         # Create a Main Frame
@@ -100,12 +116,20 @@ class ConfigureGUI:
                             height=100, relief=RAISED)
         title_frame.grid(row=0, column=0, padx=2, pady=2, sticky="nsew")
 
-        # Create a Treeview Frame
+        # Create a Treeview Frame with scrollable frame
         tree_frame  = Frame(main_frame, bd=5, width=770, height=700,
                            padx=10, pady=10, relief=RAISED)
         tree_frame.grid(row=1, column=0, padx=2, pady=2, sticky="nsew")
 
-        # ======================LABEL WIDGET===================================        
+        # Create a search bar Frame
+        label_frame = Frame(main_frame, bd=7, padx=10, pady=10, width=770,
+                            height=50, relief=RAISED)
+        label_frame.grid(row=2, column=0, padx=2, pady=2, sticky="nsew")
+
+        # ======================LABEL WIDGET===================================    
+        self.ws_lbl = Label(label_frame, text = "Name", font=('calibri', 12, 'normal'))
+        self.ws_lbl.grid(row=0, column=0, sticky=W)
+  
         self.lblWordToAdd = Label(title_frame, font=('Arial', 12, 'bold'),
                                   text="Enter your word ", fg="black",
                                   padx=1, pady=1, borderwidth=0)
@@ -117,6 +141,10 @@ class ConfigureGUI:
         self.lblDescription.grid(row=1, column=0, sticky=W)
 
         # ======================ENTRY WIDGET===================================
+        self.ws_ent = Entry(label_frame, textvariable=self.name_to_search,bd=5, justify='left',
+                            width = 40, font=('Arial', 12, 'bold'))
+        self.ws_ent.grid(row=0, column=1, sticky=W, padx=5)
+
         self.entWordToAdd = Entry(title_frame, font=('Arial', 12, 'bold'),
                                   textvariable=self.word_to_add,
                                   bd=5, justify='left', width=25)
@@ -147,36 +175,38 @@ class ConfigureGUI:
         # Define our columns
         self.word_database['columns'] = ('ID','Word', 'Meaning')
 
-        # Adding Vertical Scrollbar to Treeview
-        scroll_y = ttk.Scrollbar(tree_frame, orient=VERTICAL,
-                                 command=self.word_database.yview)
-        scroll_y.pack(side=RIGHT, fill=Y)
-        self.word_database.configure(yscrollcommand=scroll_y.set)
-
         # Adding Horizontal Scrollbar to Treeview
-        scroll_x = Scrollbar(tree_frame, orient=HORIZONTAL,
-                             command=self.word_database.xview)
-        scroll_x.pack(side=BOTTOM, fill=X)
-        self.word_database.configure(xscrollcommand=scroll_x.set)
+        scroll_x = ttk.Scrollbar(tree_frame, orient=HORIZONTAL,command=self.word_database.xview)
+        scroll_x.pack(side=BOTTOM, fill='x')
+
+        # Adding Vertical Scrollbar to Treeview
+        scroll_y = ttk.Scrollbar(tree_frame,command=self.word_database.yview)
+        scroll_y.pack(side=RIGHT, fill='y')
+
+        self.word_database.configure(yscrollcommand = scroll_y.set, xscrollcommand = scroll_x.set)
+        
+        # Configure and position grid for TreeView
+        self.word_database.grid_rowconfigure(0, weight = 1)
+        self.word_database.grid_columnconfigure(0, weight = 1)
 
         # Assigning the heading names to the respective columns
         self.word_database.heading("#0", text="", anchor=CENTER)
-        self.word_database.heading("ID", text="ID", anchor=CENTER)
-        self.word_database.heading("Word", text="Keyword", anchor=W)
-        self.word_database.heading("Meaning", text="Description", anchor=W)
+        self.word_database.heading("ID", text="ID", anchor=NW)
+        self.word_database.heading("Word", text="Keyword", anchor=NW)
+        self.word_database.heading("Meaning", text="Description", anchor=NW)
 
         # Format the columns - Assign the width to respective columns
         self.word_database.column("#0", width=0, stretch=NO)
-        self.word_database.column('ID', stretch='NO', minwidth=20, width=40,anchor=CENTER)
-        self.word_database.column("Word", stretch='YES', width=100, minwidth=80,anchor=W)
-        self.word_database.column("Meaning", stretch='YES', width=500, minwidth=100,anchor=W)
+        self.word_database.column('ID', stretch='NO', minwidth=20, width=40,anchor=NW)
+        self.word_database.column("Word", stretch='YES', width=100, minwidth=80,anchor=NW)
+        self.word_database.column("Meaning", stretch='YES', width=500, minwidth=1150,anchor=NW)
         
         # Create Striped Row Tags
         self.word_database.tag_configure('oddrow', background="white")
         self.word_database.tag_configure('evenrow', background="lightblue")
 
         self.word_database.bind("<Double-1>", self.displaySelectedItemOnDoubleClick)
-
+        
         # Calling pack method w.r.to treeview
         self.word_database.pack(side="left", fill=BOTH, expand=TRUE)
 
@@ -187,16 +217,10 @@ class ConfigureGUI:
         add_button.grid(row=0, column=2, padx=2, pady=2, sticky="nsew")
 
         # Delete Button
-        del_button = Button(title_frame, text="Delete Multiple",
+        del_button = Button(title_frame, text="Delete Data",
                             font=('Helvetica', 10, 'bold'), height=2, width=13,
                             bd=4, command=self.deleteMultipleRecords)
         del_button.grid(row=1, column=2, padx=2, pady=2, sticky="nsew")
-
-        # Search Button
-        search_button = Button(title_frame, text="Search Data",
-                               font=('Helvetica', 10, 'bold'), height=2,
-                               width=13, bd=4, command=self.searchData)
-        search_button.grid(row=0, column=3, padx=2, pady=2, sticky="nsew")
 
         # Update Button
         updt_button = Button(title_frame, text="Update Data",
@@ -204,9 +228,27 @@ class ConfigureGUI:
                              bd=4, command=self.updateData)
         updt_button.grid(row=1, column=3, padx=2, pady=2, sticky="nsew")
 
+        #Clear Entry Boxes
+        clear_record_button = Button(title_frame, text="Clear Entry Boxes", 
+                                    font=('Helvetica', 10, 'bold'), height=2, width=16,
+                                    bd=4, command=self.clearData)
+        clear_record_button.grid(row=0, column=3, padx=2, pady=2, sticky="nsew")
+
+        # Search Button
+        search_button = Button(label_frame, text="Search in Table",
+                               font=('Helvetica', 10, 'bold'), height=2,
+                               width=13, bd=4, command=self.searchData)
+        search_button.grid(row=0, column=2, padx=2, pady=2, sticky="nsew")
+
+        # Reset Button
+        reset_button = Button(label_frame, text="Reset View",
+                               font=('Helvetica', 10, 'bold'), height=2,
+                               width=13, bd=4, command=self.resetView)
+        reset_button.grid(row=0, column=3, padx=2, pady=2, sticky="nsew")
+
     # ======================FUNCTION DECLARATION===============================
     def populateView(self, word=''):
-
+        # Clear the Treeview
         self.word_database.delete(*self.word_database.get_children())
 
         # Add our data to the screen
@@ -217,18 +259,13 @@ class ConfigureGUI:
 
             # Add Data in the TreeView
             if count % 2 == 0:
-                self.word_database.insert(parent='', index='end',iid=count, text="", values=(record[0], record[1],record[2]),
-                                          tags=('evenrow',))
+                self.word_database.insert(parent='', index='end',iid=count, text="", 
+                                          values=(record[0], record[1],record[2]),tags=('evenrow',))
             else:
-                self.word_database.insert(parent='', index='end',iid=count, text="", values=(record[0], record[1],record[2]),
-                                          tags=('oddrow',))
+                self.word_database.insert(parent='', index='end',iid=count, text="",
+                                          values=(record[0], record[1],record[2]),tags=('oddrow',))
             # increment counter
             count += 1
-
-    # create a function to display data in treeview
-    def displayData(self,word=''):
-        for row in self.dbms_inst.fetch(word):
-            self.word_database.insert('',END, values=row)
 
     def addData(self):
         """
@@ -256,29 +293,59 @@ class ConfigureGUI:
         try:
             result = messagebox.askyesno("GUI Dictionary", "Are you sure you want to delete?",
                                          icon="warning", default='no')
-            if result:  # True if OK button is clicked
+            #Add logic for message box
+            if result == 1:  # True if OK button is clicked
                 selected_rowid = self.word_database.selection()
-                new_list = []
-                for item in selected_rowid:
-                    new_list.append(tuple([int(item[1:], 16)]))
-
-                self.dbms_inst.remove_many(new_list)
+                # Create List of ID's
+                ids_to_delete = []
+                # Add selections to ids_to_delete list
+                for record in selected_rowid:
+                    #ids_to_delete.append(tuple([int(record[1:], 16)]))
+                    ids_to_delete.append(self.word_database.item(record,'values')[0])
+                
+                self.dbms_inst.remove_many(ids_to_delete)
+                
+                # Delete From Treeview
                 for record in selected_rowid:
                     self.word_database.delete(record)
 
         except Exception:
             messagebox.showinfo("Message", traceback.print_exc())
         finally:
-            self.populateView()
+            #self.populateView()
             self.clearData()
 
     def clearData(self):
         self.entWordToAdd.delete(0, END)
         self.entDescription.delete(0, END)
 
+    def resetView(self):
+        self.ws_ent.delete(0, END)
+        self.populateView()
+
     def searchData(self):
-        word = self.entWordToAdd.get()
-        self.populateView(word)
+        # Add our data to the screen
+        global count
+        count = 0
+
+        lookup_record = self.ws_ent.get()
+
+        if (len(lookup_record ) == 0) or (not lookup_record .isalpha()):
+            messagebox.showerror("Error", "Enter correct data !!")
+        else:
+            # Clear the Treeview
+            self.word_database.delete(*self.word_database.get_children())
+
+            for record  in self.dbms_inst.search(lookup_record):
+                # Add Data in the TreeView
+                if count % 2 == 0:
+                    self.word_database.insert(parent='', index='end',iid=count, text="", 
+                                            values=(record[0], record[1],record[2]),tags=('evenrow',))
+                else:
+                    self.word_database.insert(parent='', index='end',iid=count, text="",
+                                            values=(record[0], record[1],record[2]),tags=('oddrow',))
+                # increment counter
+                count += 1
 
     # create a function to display the selected row from treeview on double click
     def displaySelectedItemOnDoubleClick(self,event):
