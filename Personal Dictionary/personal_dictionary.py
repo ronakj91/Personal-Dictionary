@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 try:  # for Python2
     from tkinter import *
-    from tkinter import ttk,messagebox,Scrollbar
+    from tkinter import ttk,messagebox,Scrollbar,filedialog
     from tkinter.ttk import Treeview
 except ImportError:  # for Python3
     from tkinter import *
-    from tkinter import ttk ,messagebox,Scrollbar
+    from tkinter import ttk ,messagebox,Scrollbar,filedialog
     from tkinter.ttk import Treeview
 import sqlite3
 import traceback
+import csv
+import os
 
 
 class Database:
@@ -89,6 +91,29 @@ class ConfigureGUI:
         self.root.geometry("")
         self.root.resizable(width=False, height=False)
         self.root.config(bg='#2A2C2B')
+
+        # ================================Creating Menu Object============================
+        my_menu = Menu(root)
+        self.root.config(menu=my_menu)
+
+        #Create a File Menu Item
+        file_menu = Menu(my_menu)
+        my_menu.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Open",command=self.importcsv)
+        file_menu.add_command(label="Save",command=self.exportcsv)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit",command=self.Exit_App)
+
+        #Create a Edit Menu Item
+        edit_menu = Menu(my_menu)
+        my_menu.add_cascade(label="Edit", menu=edit_menu)
+        edit_menu.add_command(label="Cut")
+        edit_menu.add_command(label="Copy")
+        edit_menu.add_command(label="Paste")
+
+        #Create a About Menu Item
+        about_menu = Menu(my_menu)
+        my_menu.add_cascade(label="About", menu=about_menu)
 
         # Create an instance of Database Class
         self.dbms_inst = Database("Dict_personal.db")
@@ -236,6 +261,43 @@ class ConfigureGUI:
         reset_button.grid(row=0, column=2, padx=2, pady=2, sticky="nsew")
 
     # ======================FUNCTION DECLARATION===============================
+    def importcsv(self):
+        file_path=filedialog.askopenfilename(initialdir=os.getcwd(), title="Open CSV", filetypes=(("CSV File", "*.csv"),("All Files", "*.*")))
+        # Check if user has selected a file
+        if not file_path:
+            return
+            
+        with open(file_path) as myFile:
+            csvread = csv.reader(myFile, delimiter=',')
+            for entry in csvread:
+                if entry[0] =="" or entry[1] == "":
+                    continue
+                
+                #count.append(i)
+                self.dbms_inst.insert(entry[0], entry[1])
+                
+        self.populateView()
+
+    def exportcsv(self):
+        try:
+            # Open the 'save CSV file' dialog
+            file_path = filedialog.asksaveasfilename(initialdir=os.getcwd, title="Save CSV", defaultextension='.csv',filetypes=(("CSV File", "*.csv"),("All Files", "*.*")))
+            # Check if user has selected a file
+            if not file_path:
+                return
+                
+            with open (file_path,mode='w', newline='') as myFile:
+                exp_writer=csv.writer(myFile, delimiter=',')
+                for record  in self.dbms_inst.fetch(''):
+                    if record[1] =="" or record[2] == "":
+                        continue                   
+                    exp_writer.writerow((record[0],record[1].strip(),record[2].strip()))
+
+            messagebox.showinfo("Data Exported", "Your Data has been exported to " + os.path.basename(file_path) + " successfully")
+        
+        except FileNotFoundError:
+            return "cancelled"
+
     def populateView(self, word=''):
         # Clear the Treeview
         self.word_database.delete(*self.word_database.get_children())
@@ -365,10 +427,10 @@ class ConfigureGUI:
             self.populateView()
 
     def Exit_App(self):
-        result = messagebox.askokcancel("Quit", "Are you sure you want to exit?", icon="warning")
-        if result > 0:
-            self.root.destroy()
-            exit()
+        # result = messagebox.askokcancel("Quit", "Are you sure you want to exit?", icon="warning")
+        # if result > 0:
+        self.root.destroy()
+        exit()
 
 
 if __name__ == '__main__':
