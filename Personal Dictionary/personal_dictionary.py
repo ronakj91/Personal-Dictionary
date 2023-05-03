@@ -11,6 +11,7 @@ import sqlite3
 import traceback
 import csv
 import os
+import logging
 
 
 class Database:
@@ -216,9 +217,9 @@ class ConfigureGUI:
 
         # Format the columns - Assign the width to respective columns
         self.word_database.column("#0", width=0, stretch=NO)
-        self.word_database.column('ID', stretch='NO', minwidth=20, width=40,anchor=NW)
-        self.word_database.column("Word", stretch='YES', width=100, minwidth=80,anchor=NW)
-        self.word_database.column("Meaning", stretch='YES', width=500, minwidth=1150,anchor=NW)
+        self.word_database.column('ID', stretch=NO, minwidth=20, width=40,anchor=NW)
+        self.word_database.column("Word", stretch=YES, width=100, minwidth=80,anchor=NW)
+        self.word_database.column("Meaning", stretch=YES, width=500, minwidth=1150,anchor=NW)
         
         # Create Striped Row Tags
         self.word_database.tag_configure('oddrow', background="white")
@@ -262,38 +263,61 @@ class ConfigureGUI:
 
     # ======================FUNCTION DECLARATION===============================
     def importcsv(self):
+        """Read CSV file from remote path.
+
+        Args:
+            filename(str): filename to read.
+        Returns:
+           
+        Raises:
+            
+        """
         file_path=filedialog.askopenfilename(initialdir=os.getcwd(), title="Open CSV", filetypes=(("CSV File", "*.csv"),("All Files", "*.*")))
         # Check if user has selected a file
         if not file_path:
             return
-            
-        with open(file_path) as myFile:
-            csvread = csv.reader(myFile, delimiter=',')
-            for entry in csvread:
-                if entry[0] =="" or entry[1] == "":
-                    continue
-                
-                #count.append(i)
-                self.dbms_inst.insert(entry[0], entry[1])
-                
+
+        try:    
+            with open(file_path, mode ='r', newline='', encoding='utf-8') as myFile:
+                csvread = csv.reader(myFile, delimiter=',', skipinitialspace=True)
+                   
+                if not csvread:
+                    raise ValueError('No data available to read')
+                for entry in csvread:                  
+                    if entry[0] =="" and entry[1] == "":
+                        continue
+
+                    self.dbms_inst.insert(entry[0], entry[1])
+        except IOError:
+            logging.error('', exc_info=True)
+
         self.populateView()
 
     def exportcsv(self):
         try:
             # Open the 'save CSV file' dialog
             file_path = filedialog.asksaveasfilename(initialdir=os.getcwd, title="Save CSV", defaultextension='.csv',filetypes=(("CSV File", "*.csv"),("All Files", "*.*")))
+
             # Check if user has selected a file
             if not file_path:
                 return
-                
-            with open (file_path,mode='w', newline='') as myFile:
-                exp_writer=csv.writer(myFile, delimiter=',')
-                for record  in self.dbms_inst.fetch(''):
-                    if record[1] =="" or record[2] == "":
-                        continue                   
-                    exp_writer.writerow((record[0],record[1].strip(),record[2].strip()))
 
-            messagebox.showinfo("Data Exported", "Your Data has been exported to " + os.path.basename(file_path) + " successfully")
+            try:    
+                with open (file_path,mode='w', newline='', encoding='utf-8') as myFile:
+                    exp_writer=csv.writer(myFile, delimiter=',', skipinitialspace=True)
+
+                    if not exp_writer:
+                        raise ValueError('No data available to export')
+                    
+                    for record  in self.dbms_inst.fetch(''):
+                        if record[1] =="" and record[2] == "":
+                            continue                   
+                        exp_writer.writerow((record[1].strip(),record[2].strip()))
+
+            except IOError:
+                logging.error('', exc_info=True)
+            finally:
+                messagebox.showinfo("Data Exported", "Your Data has been exported to " + os.path.basename(file_path) + " successfully")
         
         except FileNotFoundError:
             return "cancelled"
