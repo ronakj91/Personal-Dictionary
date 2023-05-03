@@ -1,0 +1,38 @@
+new,data
+(BASE-C),twin axial copper
+(BASE-T),twisted pair
+(BASE-K),electrical backplanes
+(BASE-L/R),fiber optic cables
+OSI,Open Systems Interconnection
+MDI,Medium-dependent interface
+AN,Auto Negotiation
+PMD,Physical Medium Dependent
+,
+PMA,Physical Medium Attachment
+FEC,Forward Error Correction
+PCS,Physical Coding Sublayer
+MAC,Media Access Control
+HPC,High performance computing
+SoC,System on Chip
+,
+MII,Media Independent Interface
+GMII,Gigibit Media Independent Interface
+SMF,Single Mode Fiber
+MMF,Multi Mode Fiber
+DAC,Direct Attached Copper
+TOR,Top of Rack
+NIC,Network Interface Card
+PTP,Precision Time Protocol
+ADC,analog-to-digital converter
+CDR,clock data recovery
+CTLE,continuous time-linear equalization
+DFE,decision feedback equalization
+DAC,digital-to-analog converter
+FFE,feed forward equalization
+PhG,phase generator
+SIPO,"serial-in, parallel-out"
+TX Buffer,transmitter buffer
+TX EQ,transmitter equalizer
+VGA,voltage gain amplifier
+,Khyati
+Ronak,
