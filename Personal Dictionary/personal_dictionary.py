@@ -12,6 +12,7 @@ import traceback
 import csv
 import os
 import logging
+import tkinter.font as Font
 
 
 class Database:
@@ -225,9 +226,10 @@ class ConfigureGUI:
         self.word_database.tag_configure('oddrow', background="white")
         self.word_database.tag_configure('evenrow', background="lightblue")
 
-        self.word_database.bind("<Double-1>", self.displaySelectedItemOnDoubleClick)
-        self.ws_ent.bind("<Return>",self.searchData)
-
+        self.word_database.bind("<Double-1>", self.on_double_click)
+        self.word_database.bind('<Button-3>', self.on_single_click)
+        self.ws_ent.bind("<Return>",self.searchData)                                          
+        
         # Calling pack method w.r.to treeview
         self.word_database.pack(side="left", fill=BOTH, expand=TRUE)
 
@@ -321,7 +323,7 @@ class ConfigureGUI:
         
         except FileNotFoundError:
             return "cancelled"
-
+    
     def populateView(self, word=''):
         # Clear the Treeview
         self.word_database.delete(*self.word_database.get_children())
@@ -398,7 +400,7 @@ class ConfigureGUI:
         self.ws_ent.delete(0, END)
         self.populateView()
 
-    def searchData(self,event):
+    def searchData(self,event): 
         # Add our data to the screen
         global count
         count = 0
@@ -417,8 +419,16 @@ class ConfigureGUI:
             # increment counter
             count += 1
 
+    def updateData(self):
+        try:
+            self.dbms_inst.update(self.word_database.item(item)['values'][0],self.entWordToAdd.get(), self.entDescription.get())
+        except Exception as e:
+            messagebox.showinfo("Message", traceback.print_exc(e))
+        finally:
+            self.populateView()
+
     # create a function to display the selected row from treeview on double click
-    def displaySelectedItemOnDoubleClick(self,event):
+    def on_double_click(self,event):
         # clear entries
         self.clearData()
 
@@ -426,12 +436,9 @@ class ConfigureGUI:
             global item
             # Grab Record Number
             item =self.word_database.identify('item',event.x,event.y)
-            '''print(item)
-            print('********** tree mouse click event **********')
-            print('clicked on', self.word_database.item(item)['values'])
-            print('event.x: %d, event.y: %d' % (event.x, event.y))
-            print(self.word_database.item(self.word_database.selection())['values'])
-            print('******************************************\n') '''
+
+            if item:
+                print("Double click:", self.word_database.item(item)["values"])
 
         except Exception as e:
             messagebox.showinfo("Message", traceback.print_exc(e))
@@ -441,21 +448,23 @@ class ConfigureGUI:
             # Output to Entry Boxes
             self.entWordToAdd.insert(0, self.word_database.item(item)['values'][1])
             self.entDescription.insert(0, self.word_database.item(item)['values'][2])
+        
+    def on_single_click(self, event):
 
-    def updateData(self):
-        try:
-            self.dbms_inst.update(self.word_database.item(item)['values'][0],self.entWordToAdd.get(), self.entDescription.get())
-        except Exception as e:
-            messagebox.showinfo("Message", traceback.print_exc(e))
-        finally:
-            self.populateView()
+        item =self.word_database.identify('item',event.x,event.y)
+        if item:
+            print("Single click:", self.word_database.item(item)["values"])
 
+        # Grab Record Values
+        values = self.word_database.item(self.word_database.selection(), 'values')
+        if len(self.word_database.item(item)['values'][2]) > 80:
+            messagebox.showinfo("Expanded Description",self.word_database.item(item)['values'][2])
+       
     def Exit_App(self):
         # result = messagebox.askokcancel("Quit", "Are you sure you want to exit?", icon="warning")
         # if result > 0:
         self.root.destroy()
         exit()
-
 
 if __name__ == '__main__':
     window = Tk()
