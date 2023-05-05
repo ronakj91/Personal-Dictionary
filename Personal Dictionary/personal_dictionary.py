@@ -12,8 +12,8 @@ import traceback
 import csv
 import os
 import logging
-import tkinter.font as Font
-
+import webbrowser
+import re
 
 class Database:
     def __init__(self, db_name):
@@ -225,10 +225,14 @@ class ConfigureGUI:
         # Create Striped Row Tags
         self.word_database.tag_configure('oddrow', background="white")
         self.word_database.tag_configure('evenrow', background="lightblue")
+        # configure a tag that applies a hyperlink-style format to text that matches the regular expression in column 3
+        self.word_database.tag_configure("hyperlink", font=("TkDefaultFont", 12, "underline"), foreground="blue")
 
         self.word_database.bind("<Double-1>", self.on_double_click)
-        self.word_database.bind('<Button-3>', self.on_single_click)
-        self.ws_ent.bind("<Return>",self.searchData)                                          
+        # bind the open_url function to the <Button-1> event for the treeview
+        self.word_database.bind("<Button-1>", self.open_url)
+        self.word_database.bind('<Button-3>', self.on_single_right_click)
+        self.ws_ent.bind("<Return>",self.searchData)                                 
         
         # Calling pack method w.r.to treeview
         self.word_database.pack(side="left", fill=BOTH, expand=TRUE)
@@ -264,6 +268,21 @@ class ConfigureGUI:
         reset_button.grid(row=0, column=2, padx=2, pady=2, sticky="nsew")
 
     # ======================FUNCTION DECLARATION===============================
+    def is_url(self,text):
+        return re.search(r'(www\.|http(s)?://)\S+', text) is not None
+
+    def update_item_tags(self):
+        # define a regular expression to match URLs
+        # define a regex pattern to match URLs
+        url_pattern = re.compile(r'(www\.|http(s)?://)\S+')
+
+        # apply the hyperlink tag to cells that contain URLs
+        for row in self.word_database.get_children():
+            for col, value in enumerate(self.word_database.item(row)["values"]):
+                if isinstance(value, str) and url_pattern.search(value):
+                    self.word_database.item(row, tags=("hyperlink",), text="")
+                    self.word_database.set(row, col, value)
+
     def importcsv(self):
         """Read CSV file from remote path.
 
@@ -333,7 +352,7 @@ class ConfigureGUI:
         count = 0
         for record  in self.dbms_inst.fetch(word):
             #print(record )  # print all records in the database
-
+            
             # Add Data in the TreeView
             if count % 2 == 0:
                 self.word_database.insert(parent='', index='end',iid=count, text="", 
@@ -341,8 +360,11 @@ class ConfigureGUI:
             else:
                 self.word_database.insert(parent='', index='end',iid=count, text="",
                                           values=(record[0], record[1],record[2]),tags=('oddrow',))
+            
             # increment counter
             count += 1
+
+        #self.update_item_tags()
 
     def addData(self):
         """
@@ -427,6 +449,7 @@ class ConfigureGUI:
         finally:
             self.populateView()
 
+
     # create a function to display the selected row from treeview on double click
     def on_double_click(self,event):
         # clear entries
@@ -448,18 +471,142 @@ class ConfigureGUI:
             # Output to Entry Boxes
             self.entWordToAdd.insert(0, self.word_database.item(item)['values'][1])
             self.entDescription.insert(0, self.word_database.item(item)['values'][2])
-        
-    def on_single_click(self, event):
-
+    
+    def on_single_right_click(self, event):
         item =self.word_database.identify('item',event.x,event.y)
-        if item:
-            print("Single click:", self.word_database.item(item)["values"])
+        """ if item:
+            print("Single click:", self.word_database.item(item)["values"]) """
 
         # Grab Record Values
         values = self.word_database.item(self.word_database.selection(), 'values')
-        if len(self.word_database.item(item)['values'][2]) > 80:
-            messagebox.showinfo("Expanded Description",self.word_database.item(item)['values'][2])
-       
+
+        # Get the item ID from the selected row in the Treeview
+        selection = self.word_database.selection()
+        if not selection:
+            return
+        selected_item_id = selection[0]
+
+        # Get the keyword and description values from the selected item in the Treeview
+        keyword = self.word_database.item(selected_item_id, 'values')[1]
+        description = self.word_database.item(selected_item_id, 'values')[2]
+
+        # Open the child window with the keyword and description values
+        self.create_child_window(selected_item_id, keyword, description)
+
+    def edit_btn_clicked(self,widget_list):
+        for widget in widget_list:
+            if widget["state"] == "disabled":
+                # configure the widget's appearance and behavior
+                widget.configure(state="normal",bg = "white" , fg="black",font=("Arial", 12),
+                                insertbackground="blue", insertwidth=2,padx=10,pady=10)
+            else:
+                widget.configure(state="disabled")
+
+    def update_data_from_edit_window(self, item_id, keyword_entry, description_entry,child_window):
+        # Find the item in the Treeview based on its ID
+        selected_item = self.word_database.item(item_id)
+
+        print(selected_item)
+        print(item_id)
+
+        # Update the values in the item's dictionary
+        selected_item['values'] = (selected_item['values'][0],keyword_entry, description_entry)
+
+        try:
+            #Update data in Database
+            self.dbms_inst.update(selected_item['values'][0], keyword_entry, description_entry)
+            # Update the item in the Treeview
+            self.word_database.item(item_id, values=selected_item['values'])
+            
+        except Exception as e:
+            messagebox.showinfo("Message", traceback.format_exc())
+        finally:       
+            # Destroy the child window
+            child_window.destroy()
+
+    def toggle_state(self, text_widget, current_state):
+        if current_state == "disabled":
+            text_widget.configure(state="normal")
+        else:
+            text_widget.configure(state="disabled")
+
+    def create_child_window(self,item_id, keyword, description):
+        # create a child window
+        child_window = Toplevel(self.root)
+        child_window.geometry("500x250")
+        child_window.title("EDIT WINDOW")
+
+        # create a Frame widget inside the child window
+        frame = Frame(child_window)
+        frame.pack(fill=BOTH, expand=True)
+
+        # Edit KEYWORD
+        lbl_edit_keyword = Label(frame, text = "Keyword", font=('Arial', 10, 'bold'), 
+                            fg="black",padx=2, pady=2, borderwidth=0)
+        lbl_edit_keyword.grid(row=0, column=0, sticky=W)
+        
+        # create a Text widget with wrap option set to "word"
+        keywrd_text_widget = Text(frame, wrap="word",font=('Arial 12'),
+                        state="normal",fg="black",bg ="lightgrey",height = 2,width=40,
+                        padx = 10, pady = 10,relief = SUNKEN )
+        keywrd_text_widget.grid(row=0, column=1,columnspan=4, sticky=NSEW)
+        keywrd_text_widget.insert(END,keyword)
+        self.toggle_state(keywrd_text_widget, "normal")
+
+        #EDIT DESCRIPTION
+        lbl_edit_description = Label(frame, text = "Description", font=('Arial', 10, 'bold'), 
+                            fg="black",padx=2, pady=2, borderwidth=0)
+        lbl_edit_description.grid(row=1, column=0, sticky=W)
+        
+        # create a Text widget with wrap option set to "word"
+        desc_text_widget = Text(frame, wrap="word",font=('Arial 12'),
+                        state="normal",fg="black",bg="lightgrey",height=4, width=40,
+                        padx = 10, pady = 10,relief = SUNKEN )
+
+        desc_text_widget.grid(row=1, column=1, columnspan=4,sticky=NSEW)
+        
+        # Add some text to the Text widget
+        desc_text_widget.insert("end",description)
+        self.toggle_state(desc_text_widget, "normal")
+
+        # create some buttons
+        edit_btn = Button(frame, text="Edit",command=lambda: self.edit_btn_clicked([keywrd_text_widget, desc_text_widget]))
+        edit_btn.grid(row=2, column=0, padx=10, pady=10)
+
+        updt_btn = Button(frame, text="Update", 
+                        command=lambda: self.update_data_from_edit_window(item_id, keywrd_text_widget.get("1.0", "end-1c"), desc_text_widget.get("1.0", "end-1c"),child_window))
+        updt_btn.grid(row=2, column=1, padx=10, pady=10)
+
+
+        # highlight URLs in the text
+        #self.highlight_urls(desc_text_widget)
+
+        child_window.mainloop()
+
+    def highlight_urls(self,text_widget):
+        # regular expression pattern to match URLs
+        url_pattern = re.compile(r'(www\.|http(s)?://)\S+')
+
+        # get the text from the Text widget
+        text = text_widget.get("1.0", "end")
+
+        # find all matches of the URL pattern in the text
+        for match in re.finditer(url_pattern, text):
+            start = match.start()
+            end = match.end()
+
+            # apply the "url" tag to the matched text
+            text_widget.tag_add("url", f"1.{start}", f"1.{end}")
+            text_widget.tag_config("url", foreground="blue", underline=True)
+
+    # define a function to open the URL when the user clicks on a cell with the hyperlink-style format
+    def open_url(self,event):
+        row = self.word_database.identify_row(event.y)
+        col = self.word_database.identify_column(event.x)
+        if row and col and "hyperlink" in self.word_database.item(row)["tags"]:
+            url = self.word_database.set(row, col)
+            webbrowser.open_new_tab(url)
+
     def Exit_App(self):
         # result = messagebox.askokcancel("Quit", "Are you sure you want to exit?", icon="warning")
         # if result > 0:
