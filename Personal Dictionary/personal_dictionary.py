@@ -49,6 +49,17 @@ class Database:
         except sqlite3.Error as error:
             print("Failed to search records from table", error)
 
+    def fetch_all(self):
+        try:
+            # Fetch all records from the table
+            self.cur.execute("SELECT * FROM dictionary")
+            records = self.cur.fetchall()
+            return records
+
+        except sqlite3.Error as error:
+            print("Failed to fetch records from table", error)
+
+
     def insert(self, word, meaning):
         # Insert into Table
         self.cur.execute("INSERT INTO dictionary VALUES (NULL, ?, ?)", (word, meaning))
@@ -410,16 +421,20 @@ class ConfigureGUI:
         # Clear the Treeview
         self.word_database.delete(*self.word_database.get_children())
 
-        for record  in self.dbms_inst.fetch(self.ws_ent.get()):
-            # Add Data in the TreeView
-            if count % 2 == 0:
-                self.word_database.insert(parent='', index='end',iid=count, text="", 
-                                        values=(record[0], record[1],record[2]),tags=('evenrow',))
-            else:
-                self.word_database.insert(parent='', index='end',iid=count, text="",
-                                        values=(record[0], record[1],record[2]),tags=('oddrow',))
-            # increment counter
-            count += 1
+        search_term = self.ws_ent.get().lower()  # Convert search term to lowercase for case-insensitive search
+
+        for record  in self.dbms_inst.fetch_all():
+            # Check if any value in the record matches the search term
+            if any(search_term in str(value).lower() for value in record):
+                # Add Data in the TreeView
+                if count % 2 == 0:
+                    self.word_database.insert(parent='', index='end',iid=count, text="", 
+                                            values=record,tags=('evenrow',))
+                else:
+                    self.word_database.insert(parent='', index='end',iid=count, text="",
+                                            values=record,tags=('oddrow',))
+                # increment counter
+                count += 1
 
     def updateData(self):
         try:
