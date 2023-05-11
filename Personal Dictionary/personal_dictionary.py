@@ -598,6 +598,8 @@ class ChildGUI(ConfigureGUI):
 
         # regular expression pattern to match URLs
         url_pattern = re.compile(r'(www\.|http(s)?://)\S+')
+        
+        #url_pattern = re.compile(r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))")
 
         # Get the content of the Text widget
         content = text_widget.get("1.0", "end")
@@ -607,7 +609,7 @@ class ChildGUI(ConfigureGUI):
             start_index = "1.0"
             while True:
                 # Search for the next occurrence of the URL
-                start_index = text_widget.search(url.group(), start_index, stopindex="end", regexp=True)
+                start_index = text_widget.search(url.group(), start_index, stopindex="end")
                 if not start_index:
                     break
 
