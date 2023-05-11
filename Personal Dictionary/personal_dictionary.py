@@ -580,11 +580,11 @@ class ChildGUI(ConfigureGUI):
         # create some buttons
         edit_btn = Button(self.frame, text="Edit", height= 2, width=7, compound="c",fg="black",bg="lightgrey",
                         command=lambda: self.edit_btn_clicked([keywrd_text_widget, desc_text_widget]))
-        edit_btn.grid(row=2, column=2, padx=10, pady=10)
+        edit_btn.grid(row=2, column=2, padx=10, pady=10, sticky=NSEW)
 
         updt_btn = Button(self.frame, text="Update", height= 2, width=7, compound="c",fg="black",bg="lightgrey",
                         command=lambda: self.update_data_from_edit_window(item_id, keywrd_text_widget.get("1.0", "end-1c"), desc_text_widget.get("1.0", "end-1c"),self.child_window))
-        updt_btn.grid(row=2, column=3, padx=10, pady=10)
+        updt_btn.grid(row=2, column=3, padx=10, pady=10, sticky=NSEW)
 
         # highlight URLs in the text
         self.highlight_urls(desc_text_widget)
