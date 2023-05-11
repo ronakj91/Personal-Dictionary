@@ -300,7 +300,8 @@ class ConfigureGUI:
     def exportcsv(self):
         try:
             # Open the 'save CSV file' dialog
-            file_path = filedialog.asksaveasfilename(initialdir=os.getcwd, title="Save CSV", defaultextension='.csv',filetypes=(("CSV File", "*.csv"),("All Files", "*.*")))
+            file_path = filedialog.asksaveasfilename(initialdir=os.getcwd, title="Save CSV", defaultextension='.csv',
+                                                    filetypes=(("CSV File", "*.csv"),("All Files", "*.*")))
 
             # Check if user has selected a file
             if not file_path:
@@ -380,7 +381,6 @@ class ConfigureGUI:
                 ids_to_delete = []
                 # Add selections to ids_to_delete list
                 for record in selected_rowid:
-                    #ids_to_delete.append(tuple([int(record[1:], 16)]))
                     ids_to_delete.append(self.word_database.item(record,'values')[0])
                 
                 self.dbms_inst.remove_many(ids_to_delete)
@@ -392,7 +392,6 @@ class ConfigureGUI:
         except Exception:
             messagebox.showinfo("Message", traceback.print_exc())
         finally:
-            #self.populateView()
             self.clearData()
 
     def clearData(self):
@@ -474,8 +473,6 @@ class ConfigureGUI:
         self.childGUI_obj.create_child_window(selected_item_id, keyword, description)
             
     def Exit_App(self):
-        # result = messagebox.askokcancel("Quit", "Are you sure you want to exit?", icon="warning")
-        # if result > 0:
         self.root.destroy()
         exit()
 
@@ -580,27 +577,40 @@ class ChildGUI(ConfigureGUI):
         self.child_window.mainloop()
 
     def highlight_urls(self,text_widget):
+        """ Highlight all the url in the text widget and make them clickable """
+        # Clear existing tags
+        text_widget.tag_delete("url")
+
         # regular expression pattern to match URLs
         url_pattern = re.compile(r'(www\.|http(s)?://)\S+')
 
-        # get the text from the Text widget
-        text = text_widget.get("1.0", "end")
+        # Get the content of the Text widget
+        content = text_widget.get("1.0", "end")
 
-        # find all matches of the URL pattern in the text
-        for match in re.finditer(url_pattern, text):
-            start = match.start()
-            end = match.end()
+        # Find all URLs using the regular expression pattern
+        for url in re.finditer(url_pattern, content):
+            start_index = "1.0"
+            while True:
+                # Search for the next occurrence of the URL
+                start_index = text_widget.search(url.group(), start_index, stopindex="end", regexp=True)
+                if not start_index:
+                    break
 
-            # apply the "url" tag to the matched text
-            text_widget.tag_add("url", f"1.{start}", f"1.{end}")
-            text_widget.tag_config("url", foreground="blue", underline=True, wrap =WORD)
-        
-        # bind the open_url function to the <Button-1> event
-        text_widget.tag_bind("url", "<Button-1>", self.open_url)
-        text_widget.tag_bind("url", "<Enter>", lambda event: event.widget.config(cursor="hand2"))
-        text_widget.tag_bind("url", "<Leave>", lambda event: event.widget.config(cursor="xterm"))
+                end_index = f"{start_index}+{len(url.group())}c"
 
-    
+                text_widget.tag_add("url", start_index, end_index)
+                text_widget.tag_config("url", foreground="blue", underline=True, wrap =WORD)
+
+                # bind the open_url function to the <Button-1> event
+                text_widget.tag_bind("url", "<Button-1>", self.open_url)
+                text_widget.tag_bind("url", "<Enter>", lambda event: event.widget.config(cursor="hand2"))
+                text_widget.tag_bind("url", "<Leave>", lambda event: event.widget.config(cursor="xterm"))
+
+                # Move to the next character
+                start_index = end_index
+
+        self.toggle_state(text_widget, "normal")
+
     # Define a function to open the URL when the user clicks on a cell with the hyperlink-style format
     def open_url(self,event):
         # Get the index of the clicked text
