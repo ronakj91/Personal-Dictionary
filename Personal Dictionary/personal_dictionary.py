@@ -498,7 +498,7 @@ class ChildGUI(ConfigureGUI):
             if widget["state"] == "disabled":
                 # configure the widget's appearance and behavior
                 widget.configure(state="normal",bg = "white" , fg="black",font=("Arial", 12),
-                                insertbackground="blue", insertwidth=2,padx=10,pady=10)
+                                insertbackground="blue",insertwidth=2)
             else:
                 widget.configure(state="disabled")
 
@@ -524,52 +524,55 @@ class ChildGUI(ConfigureGUI):
     def create_child_window(self,item_id, keyword, description):
         # create a child window
         self.child_window = Toplevel(self.child_root)
-        self.child_window.geometry("500x250")
+        self.child_window.geometry("550x325")
         self.child_window.resizable(False, False)
-        self.child_window.title("EDIT WINDOW")
-        self.child_window.wm_attributes('-fullscreen', 'false')
+        self.child_window.title("EDIT/UPDATE WINDOW") 
 
         # create a Frame widget inside the child window
         self.frame = Frame(self.child_window)
-        self.frame.pack(fill=BOTH, expand=True)
+        self.frame.pack(side=RIGHT,fill=BOTH, expand=True, padx=10, pady=5, ipadx=5, ipady=5)
+
+        Grid.rowconfigure(self.child_window, 0, weight=1)
+        Grid.columnconfigure(self.child_window, 0, weight=1)
 
         # Edit KEYWORD
         lbl_edit_keyword = Label(self.frame, text = "Keyword",justify="left", font=('Arial', 10, 'bold'), 
-                            fg="black",padx=2, pady=2, borderwidth=0)
-        lbl_edit_keyword.grid(row=0, column=0, sticky=W)
+                            fg="black",padx=10, pady=10, borderwidth=0)
+        lbl_edit_keyword.grid(row=0, column=0, sticky=NSEW)
         
         # create a Text widget with wrap option set to "word"
-        keywrd_text_widget = Text(self.frame, wrap="word",font=('Arial 12'),
-                        state="normal",fg="black",bg ="lightgrey",height = 2,width=40,
-                        padx = 10, pady = 10,relief = SUNKEN )
+        keywrd_text_widget = Text(self.frame, wrap="word",font=('Arial 12'), borderwidth=5,
+                        state="normal",fg="black",bg ="lightgrey",height = 1,width=40,
+                        padx = 20, pady = 20,relief = RIDGE , undo=True)
         keywrd_text_widget.grid(row=0, column=1,columnspan=4, sticky=NSEW)
         keywrd_text_widget.insert(END,keyword)
+        keywrd_text_widget.grid_columnconfigure(0, weight=1)
         self.toggle_state(keywrd_text_widget, "normal")
 
         #EDIT DESCRIPTION
         lbl_edit_description = Label(self.frame, text = "Description", justify="left",font=('Arial', 10, 'bold'), 
-                            fg="black",padx=2, pady=2, borderwidth=0)
-        lbl_edit_description.grid(row=1, column=0, sticky=W)
+                            fg="black",padx=10, pady=10, borderwidth=0)
+        lbl_edit_description.grid(row=1, column=0, sticky=NSEW)
         
         # create a Text widget with wrap option set to "word"
-        desc_text_widget = Text(self.frame, wrap="word",font=('Arial 12'),
-                        state="normal",fg="black",bg="lightgrey",height=4, width=40,
-                        padx = 10, pady = 10,relief = SUNKEN )
+        desc_text_widget = Text(self.frame, wrap="word",font=('Arial 12'),borderwidth=5,
+                        state="normal",fg="black",bg="lightgrey",height=8, width=40,
+                        padx = 20, pady = 20,relief = RIDGE, undo=True )
 
         desc_text_widget.grid(row=1, column=1, columnspan=4,sticky=NSEW)
-        desc_text_widget.tag_bind('hyperlink', '<Button-1>', self.open_url)
-
         # Add some text to the Text widget
         desc_text_widget.insert("end",description)
+        desc_text_widget.grid_columnconfigure(0, weight=1)
         self.toggle_state(desc_text_widget, "normal")
 
         # create some buttons
-        edit_btn = Button(self.frame, text="Edit",command=lambda: self.edit_btn_clicked([keywrd_text_widget, desc_text_widget]))
-        edit_btn.grid(row=2, column=0, padx=10, pady=10)
+        edit_btn = Button(self.frame, text="Edit", height= 2, width=7, compound="c",fg="black",bg="lightgrey",
+                        command=lambda: self.edit_btn_clicked([keywrd_text_widget, desc_text_widget]))
+        edit_btn.grid(row=2, column=2, padx=10, pady=10)
 
-        updt_btn = Button(self.frame, text="Update", 
+        updt_btn = Button(self.frame, text="Update", height= 2, width=7, compound="c",fg="black",bg="lightgrey",
                         command=lambda: self.update_data_from_edit_window(item_id, keywrd_text_widget.get("1.0", "end-1c"), desc_text_widget.get("1.0", "end-1c"),self.child_window))
-        updt_btn.grid(row=2, column=1, padx=10, pady=10)
+        updt_btn.grid(row=2, column=3, padx=10, pady=10)
 
         # highlight URLs in the text
         self.highlight_urls(desc_text_widget)
@@ -594,7 +597,7 @@ class ChildGUI(ConfigureGUI):
         
         # bind the open_url function to the <Button-1> event
         text_widget.tag_bind("url", "<Button-1>", self.open_url)
-        text_widget.tag_bind("url", "<Enter>", lambda event: event.widget.config(cursor="arrow"))
+        text_widget.tag_bind("url", "<Enter>", lambda event: event.widget.config(cursor="hand2"))
         text_widget.tag_bind("url", "<Leave>", lambda event: event.widget.config(cursor="xterm"))
 
     
